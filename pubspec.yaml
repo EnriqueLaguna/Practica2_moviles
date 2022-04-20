@@ -44,6 +44,8 @@ dependencies:
   firebase_storage:
   path_provider:
   avatar_glow:
+  record: ^3.0.4
+  permission_handler: ^9.2.0
 
 dev_dependencies:
   flutter_test:

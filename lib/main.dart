@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:practica2_moviles/auth/bloc/auth_bloc.dart';
+import 'package:practica2_moviles/home/bloc/song_bloc.dart';
 import 'package:practica2_moviles/home/home_page.dart';
 import 'package:practica2_moviles/login/login_page.dart';
-
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -15,6 +15,9 @@ void main() async{
         BlocProvider(
           create: (context) => AuthBloc()..add(VerifyAuthEvent()),
         ),
+        BlocProvider(
+          create: (context) => SongBloc(),
+        )
       ], 
       child: MyApp(),
     ),
