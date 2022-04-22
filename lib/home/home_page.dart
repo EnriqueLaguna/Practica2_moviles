@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:practica2_moviles/auth/bloc/auth_bloc.dart';
+import 'package:practica2_moviles/favorites/bloc/favorites_bloc.dart';
 import 'package:practica2_moviles/favorites/favorites_page.dart';
 import 'package:practica2_moviles/home/bloc/song_bloc.dart';
+import 'package:practica2_moviles/songPreview/song_preview.dart';
 
 import 'package:record/record.dart';
 
@@ -19,45 +21,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // Animacion del boton
   bool _animate = false;
-  bool _isRecording = false;
-
-  //Grabado de audio
-  final record = Record();
-
-  //Archivo para mandar al Bloc
-  File? songFile;
 
   @override
   void initState() {
-    _isRecording = false;
     super.initState();
-  }
-
-  Future<void> _start() async {
-    try {
-      if (await record.hasPermission()) {
-        await record.start();
-
-        bool isRecording = await record.isRecording();
-        setState(() {
-          _isRecording = isRecording;
-          _animate = true;
-        });
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-
-  Future<void> _stop() async {
-    final path = await record.stop();
-
-    songFile = File(path!);
-
-    setState(() {
-      _isRecording = false;
-      _animate = false;
-    });
   }
 
   @override
@@ -68,9 +35,15 @@ class _HomePageState extends State<HomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Error con la cancion"))
           );
-        }else if (state is SongListeningState){
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Escuchando la cancion"))
+        }else if(state is SongSuccessState){
+          setState(() {
+            _animate = false;
+          });
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SongPreview(songInfo: state.songInfoJson)
+            )
           );
         }
       },
@@ -102,13 +75,10 @@ class _HomePageState extends State<HomePage> {
                         backgroundColor: Colors.grey[100],
                         child: TextButton(
                           onPressed: () {
-                            // _isRecording ? await _stop() : await _start();
-                            // if (!_isRecording) {
-                            //   print(songFile!.path);
-                            //   Map<String, dynamic> songDataHomePage = {"file": songFile};
-                            //   BlocProvider.of<SongBloc>(context).add(OnSendSongFile(songFileToSave: songDataHomePage));
-                            // }
                             BlocProvider.of<SongBloc>(context).add(OnListenToSong());
+                            setState(() {
+                              _animate = true;
+                            });
                           },
                           child: Image(
                             image: AssetImage("assets/musica.png"),
@@ -130,10 +100,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     IconButton(
                       onPressed: () {
+                        BlocProvider.of<FavoritesBloc>(context).add(OnGetUserFavorites());
                         Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => Favorites()));
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => Favorites()
+                          )
+                        );
                       },
                       icon: CircleAvatar(
                         child: Icon(Icons.favorite),
@@ -145,19 +118,27 @@ class _HomePageState extends State<HomePage> {
                     ),
                     IconButton(
                       onPressed: () {
-                        BlocProvider.of<SongBloc>(context).add(LoadSongInfo());
-                      },
-                      icon: CircleAvatar(
-                        child: Icon(Icons.music_off),
-                        backgroundColor: Colors.white54,
-                        foregroundColor: Colors.black54,
-                      ),
-                      iconSize: 40,
-                      tooltip: "Test Song info",
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        BlocProvider.of<AuthBloc>(context)..add(SignOutEvent());
+                        showDialog(context: context, builder: (builder) => AlertDialog(
+                            title: Text("Cerrar sesión"),
+                            content: Text("Al cerrar sesión de su cuenta será redirigido a la pantalla de Log in, ¿Quiere continuar?"),
+                            actions: [
+                              TextButton(
+                                child: Text("Cancelar"), 
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                              TextButton(
+                                child: Text("Cerrar sesión"), 
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  BlocProvider.of<AuthBloc>(context)..add(SignOutEvent());
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                        
                       },
                       icon: CircleAvatar(
                         child: Icon(Icons.power_settings_new),

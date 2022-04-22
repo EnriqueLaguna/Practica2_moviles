@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:practica2_moviles/auth/bloc/auth_bloc.dart';
+import 'package:practica2_moviles/favorites/bloc/favorites_bloc.dart';
 import 'package:practica2_moviles/home/bloc/song_bloc.dart';
 import 'package:practica2_moviles/home/home_page.dart';
 import 'package:practica2_moviles/login/login_page.dart';
+import 'package:practica2_moviles/songPreview/bloc/songpreview_bloc.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -17,7 +19,13 @@ void main() async{
         ),
         BlocProvider(
           create: (context) => SongBloc(),
-        )
+        ),
+        BlocProvider(
+          create: (context) => SongpreviewBloc()
+        ),
+        BlocProvider(
+          create: (context) => FavoritesBloc()..add(OnGetUserFavorites())
+        ),
       ], 
       child: MyApp(),
     ),
@@ -29,9 +37,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: ThemeData(
-        colorScheme: ColorScheme.dark()
+        colorScheme: ColorScheme.dark(),
+        primaryColor: Colors.purple[700],
       ),
-      title: 'Material App',
+      title: 'FindTrackApp',
       home: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if(state is AuthErrorState){

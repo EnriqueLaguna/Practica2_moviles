@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart'as http;
+import 'package:practica2_moviles/utlis/secrets.dart';
 import 'package:record/record.dart';
 
 part 'song_event.dart';
@@ -13,110 +14,83 @@ part 'song_state.dart';
 
 class SongBloc extends Bloc<SongEvent, SongState> {
 
-  File? _listedSongFile;
-  bool _isRecording = false;
-
   SongBloc() : super(SongInitial()) {
-    on<OnListenToSong>(_getSongData);
-    on<LoadSongInfo>(loadSongInfo);
-    on<OnSendSongFile>(_saveData);
+    on<OnListenToSong>(_recordSong);
   }
 
-  final String urlDeLaAPI = "https://api.audd.io/";
 
-  Map<String, String> weaRaraQueNoEntiendo = {
-    'api_token': '',
-    'url': 'https://audd.tech/example.mp3',
-    'return': 'apple_music, spotify'
-  };
+  //Funcion para grabar
+  FutureOr<void> _recordSong(OnListenToSong event, Emitter emit) async {
+      try{
+        //Funcion para grabar el audio
+        final record = Record();
+        //Pedir permiso para grabar
+        final permission = await record.hasPermission();
+        if(!permission){
+          emit(SongErrorState());
+          return;
+        }
+        //Empezar a grabar
+        await record.start();
 
-  Future<void> _saveData(OnSendSongFile event, Emitter emit) async {
-    emit(SongLoadingState());
+        //Esperar para que se grabe
+        await Future.delayed(
+          Duration(seconds: 10)
+        );
 
-    File songFileBitch = event.songFileToSave["file"];
+        //Terminar de grabar
+        String? _listedSongPath = await record.stop();
 
-    Map<String, dynamic> weaRaraConElArchivo = {
-      'api_token': 'd772e1a104c428aa006aba020829eab3',
-      'file': songFileBitch.readAsBytesSync(),
-      'return': 'apple_music, spotify'
-    };
+        //Verificar si se grabo algo
+        if(_listedSongPath == null){
+          emit(SongErrorState());
+          return;
+        }
 
-    final Uri url = Uri.https('api.audd.io', '/', weaRaraConElArchivo);
-    print(url);
+        File _sendFile = new File(_listedSongPath);
 
-    try{
-      Response res = await get(url);
-      if(res.statusCode == HttpStatus.ok){
-        print(jsonDecode(res.body));
-      }
-    } catch (e){
-      print(e);
-    }
+        String _fileAsBytes = base64Encode(_sendFile.readAsBytesSync());
 
-  }
+        final informacionDeRespuesta = await _getSongInfo(_fileAsBytes);
 
-  void loadSongInfo(LoadSongInfo event, Emitter emit) async {
-    emit(SongLoadingState());
-    var songInfo = await _getSongFromApi();
-    if(songInfo == null){
-      emit(SongErrorState());
-    } else {
-      print(songInfo);
-      emit(SongSuccessState());
-    }
-  }
-
-  Future _getSongFromApi() async {
-    final Uri url = Uri.https('api.audd.io', '/', weaRaraQueNoEntiendo);
-    print(url);
-
-    try{
-      Response res = await get(url);
-      if(res.statusCode == HttpStatus.ok){
-        return jsonDecode(res.body);
-      }
-    } catch (e){
-      print(e);
-    }
-  }
-  FutureOr<void> _getSongData(OnListenToSong event, Emitter emit) async {
-      emit(SongListeningState());
-      await _listenToSong();
-      if(_listedSongFile == null){
-        emit(SongErrorState());
-      } else {
-        Map<String, dynamic> weaRaraConElArchivo = {
-          'api_token': '',
-          'file': _listedSongFile!.readAsBytesSync(),
-          'return': 'apple_music, spotify'
+        final info = {
+          "artist": informacionDeRespuesta["artist"],
+          "title": informacionDeRespuesta["title"],
+          "album": informacionDeRespuesta["album"],
+          "release_date": informacionDeRespuesta["release_date"],
+          "apple_music": informacionDeRespuesta["apple_music"], //== null? "Lo que quiera": informacionDeRespuesta["apple_music"]["url"],
+          "spotify": informacionDeRespuesta["spotify"]["external_urls"]["spotify"],
+          "song_link": informacionDeRespuesta["song_link"],
+          "albumImage": informacionDeRespuesta["spotify"]["album"]["images"][0]["url"],
         };
 
-        final Uri url = Uri.https('api.audd.io', '/', weaRaraConElArchivo);
-        print(url);
+        //print(info);
+        emit(SongSuccessState(songInfoJson: info));
 
-        try{
-          Response res = await get(url);
-          if(res.statusCode == HttpStatus.ok){
-            print(jsonDecode(res.body));
-          }
-        } catch (e){
-          print(e);
-        }
-      }
-    }
 
-    Future<void> _listenToSong() async {
-      final record = Record();
-      final permissionBro = await record.hasPermission();
-      if(permissionBro){
-        await record.start();
-        _isRecording = await record.isRecording();
-        if(!_isRecording){
-          final songPathBro = await record.stop();
-          _listedSongFile = File(songPathBro!);
-        }
-      }else{
-        print("No se dieron los permisos");
+      }catch(e){
+        print(e);
       }
+  
+  }
+
+  //Obtener la infomracion de la cancion de la API
+  Future<dynamic> _getSongInfo(String _filesAsBytes) async {
+    //Informacion necesaria para la API
+    final Uri urlDeLaAPI = Uri.parse("https://api.audd.io/");
+    Map<String, String> urlParameters = {
+      'api_token': API_TOKEN,
+      'audio': _filesAsBytes,
+      'return': 'apple_music,spotify',
+    };
+    try{
+      final response = await http.post(urlDeLaAPI, body: urlParameters);
+      if(response.statusCode == 200){
+        return jsonDecode(response.body)["result"];
+      }
+    }catch(e){
+
     }
+  }
+
 }

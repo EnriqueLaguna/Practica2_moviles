@@ -9,19 +9,18 @@ abstract class SongState extends Equatable {
 
 class SongInitial extends SongState {}
 
-class SongSuccessState extends SongState {}
-
 class SongErrorState extends SongState {}
 
 class SongLoadingState extends SongState {}
 
-class SongListeningState extends SongState{}
+class SongInfoReceivedState extends SongState{
+}
 
-class SongFileChangedState extends SongState{
-  final File songFile;
+class SongSuccessState extends SongState{
+  final Map<String, dynamic> songInfoJson;
 
-  SongFileChangedState({required this.songFile});
+  SongSuccessState({required this.songInfoJson});
 
   @override
-  List<Object> get props => [songFile];
+  List<Object> get props => [songInfoJson];
 }
