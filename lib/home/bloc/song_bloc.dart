@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:http/http.dart'as http;
-import 'package:practica2_moviles/utlis/secrets.dart';
+import 'package:practica2_moviles/utils/secrets.dart';
 import 'package:record/record.dart';
 
 part 'song_event.dart';
